@@ -39,7 +39,7 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen pt-16">
+    <main className="min-h-screen pt-12 sm:pt-16">
       <AnimatePresence mode="wait">
         <motion.div
           key={currentProduct.id}
@@ -57,7 +57,7 @@ export default function Home() {
           </section>
 
           {/* Flavor Story Section */}
-          <section className="py-12 sm:py-20 md:py-32 px-4 sm:px-6 md:px-12 relative">
+          <section className="py-8 sm:py-16 md:py-32 px-4 sm:px-6 md:px-12 relative">
             {/* Section transition overlay */}
             <div className="absolute inset-0 bg-gradient-to-b from-black/0 via-black/20 to-transparent pointer-events-none" />
 
@@ -70,10 +70,10 @@ export default function Home() {
                 className="grid md:grid-cols-2 gap-8 md:gap-12 items-center"
               >
                 <div>
-                  <h2 className="text-3xl sm:text-4xl md:text-6xl font-bold text-white mb-4 sm:mb-6">
+                  <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-3 sm:mb-5">
                     The Story Behind
                   </h2>
-                  <p className="text-base sm:text-lg md:text-xl text-white/80 leading-relaxed mb-6 sm:mb-8">
+                  <p className="text-sm sm:text-base md:text-lg text-white/80 leading-relaxed mb-5 sm:mb-6">
                     {currentProduct.description}
                   </p>
                   <div className="flex flex-wrap gap-2 sm:gap-4">
@@ -121,7 +121,7 @@ export default function Home() {
           </section>
 
           {/* Chocolate Details Section */}
-          <section className="py-12 sm:py-20 md:py-32 px-4 sm:px-6 md:px-12 bg-black/20">
+          <section className="py-8 sm:py-16 md:py-32 px-4 sm:px-6 md:px-12 bg-black/20">
             <div className="max-w-6xl mx-auto text-center">
               <motion.h2
                 initial={{ opacity: 0, y: 30 }}
