@@ -35,7 +35,11 @@ export default function ProductTextOverlays({
     [0.25, 0.35, 0.55, 0.65],
     [0, 1, 1, 0],
   );
-  const storyY = useTransform(scrollYProgress, [0.25, 0.35, 0.65], [60, 0, -60]);
+  const storyY = useTransform(
+    scrollYProgress,
+    [0.25, 0.35, 0.65],
+    [60, 0, -60],
+  );
   const storyScale = useTransform(
     scrollYProgress,
     [0.25, 0.35, 0.55],

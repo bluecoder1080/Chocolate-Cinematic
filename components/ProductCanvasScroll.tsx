@@ -13,51 +13,167 @@ export default function ProductCanvasScroll({
 }: ProductCanvasScrollProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [imagesLoaded, setImagesLoaded] = useState(false);
+  const [firstFrameLoaded, setFirstFrameLoaded] = useState(false);
+  const [allFramesLoaded, setAllFramesLoaded] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
-  const imagesRef = useRef<HTMLImageElement[]>([]);
+  const imagesRef = useRef<Array<HTMLImageElement | null>>([]);
+  const loadedFramesRef = useRef<Set<number>>(new Set());
+  const desiredFrameRef = useRef(0);
   const frameIndexRef = useRef(0);
 
-  // Preload all frames
+  const getFrameSrc = (index: number) => {
+    const frameNumber = String(index + 1).padStart(3, "0");
+    return `${folderPath}/ezgif-frame-${frameNumber}.jpg`;
+  };
+
+  const getNearestLoadedFrameIndex = (targetIndex: number) => {
+    if (loadedFramesRef.current.size === 0) return null;
+    if (loadedFramesRef.current.has(targetIndex)) return targetIndex;
+
+    for (let offset = 1; offset < frameCount; offset++) {
+      const previousIndex = targetIndex - offset;
+      const nextIndex = targetIndex + offset;
+
+      if (previousIndex >= 0 && loadedFramesRef.current.has(previousIndex)) {
+        return previousIndex;
+      }
+      if (nextIndex < frameCount && loadedFramesRef.current.has(nextIndex)) {
+        return nextIndex;
+      }
+    }
+
+    return null;
+  };
+
+  const drawFrame = (index: number) => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx || !imagesRef.current[index]) return;
+
+    const img = imagesRef.current[index];
+    if (!img) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const canvasAspect = canvas.width / canvas.height;
+    const imgAspect = img.width / img.height;
+
+    let drawWidth;
+    let drawHeight;
+    let offsetX;
+    let offsetY;
+
+    if (canvasAspect > imgAspect) {
+      drawHeight = canvas.height;
+      drawWidth = img.width * (canvas.height / img.height);
+      offsetX = (canvas.width - drawWidth) / 2;
+      offsetY = 0;
+    } else {
+      drawWidth = canvas.width;
+      drawHeight = img.height * (canvas.width / img.width);
+      offsetX = 0;
+      offsetY = (canvas.height - drawHeight) / 2;
+    }
+
+    ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+  };
+
+  const drawNearestLoadedFrame = (targetIndex: number) => {
+    const nearestIndex = getNearestLoadedFrameIndex(targetIndex);
+    if (nearestIndex === null) return;
+    drawFrame(nearestIndex);
+  };
+
+  // Progressive preload: first frame fast, remaining frames in background
   useEffect(() => {
-    const images: HTMLImageElement[] = [];
-    let loadedCount = 0;
+    let cancelled = false;
+    let nextFrameToQueue = 1;
+    let activeRequests = 0;
+    const maxConcurrent = window.innerWidth < 768 ? 4 : 8;
+    const createdImages: HTMLImageElement[] = [];
 
-    const preloadImages = () => {
-      for (let i = 1; i <= frameCount; i++) {
-        const img = new Image();
-        // Format: ezgif-frame-001.jpg, ezgif-frame-002.jpg, etc.
-        const frameNumber = String(i).padStart(3, "0");
-        img.src = `${folderPath}/ezgif-frame-${frameNumber}.jpg`;
+    imagesRef.current = Array.from({ length: frameCount }, () => null);
+    loadedFramesRef.current = new Set();
+    setLoadingProgress(0);
+    setFirstFrameLoaded(false);
+    setAllFramesLoaded(false);
+    frameIndexRef.current = 0;
+    desiredFrameRef.current = 0;
 
-        img.onload = () => {
-          loadedCount++;
-          setLoadingProgress(Math.floor((loadedCount / frameCount) * 100));
+    const markFrameComplete = (
+      index: number,
+      image: HTMLImageElement | null,
+    ) => {
+      if (cancelled) return;
 
-          if (loadedCount === frameCount) {
-            setImagesLoaded(true);
-          }
-        };
+      if (image) {
+        imagesRef.current[index] = image;
+      }
 
-        img.onerror = () => {
-          console.warn(`Failed to load image: ${img.src}`);
-          loadedCount++;
-          setLoadingProgress(Math.floor((loadedCount / frameCount) * 100));
+      if (!loadedFramesRef.current.has(index)) {
+        loadedFramesRef.current.add(index);
+      }
 
-          if (loadedCount === frameCount) {
-            setImagesLoaded(true);
-          }
-        };
+      setLoadingProgress(
+        Math.floor((loadedFramesRef.current.size / frameCount) * 100),
+      );
 
-        images.push(img);
+      if (index === 0) {
+        setFirstFrameLoaded(true);
+        requestAnimationFrame(() => {
+          drawNearestLoadedFrame(0);
+        });
+      }
+
+      if (index === desiredFrameRef.current) {
+        requestAnimationFrame(() => {
+          drawNearestLoadedFrame(index);
+        });
+      }
+
+      if (loadedFramesRef.current.size === frameCount) {
+        setAllFramesLoaded(true);
       }
     };
 
-    preloadImages();
-    imagesRef.current = images;
+    const loadFrame = (index: number, onDone?: () => void) => {
+      const img = new Image();
+      img.decoding = "async";
+      img.src = getFrameSrc(index);
+      createdImages.push(img);
+
+      img.onload = () => {
+        markFrameComplete(index, img);
+        onDone?.();
+      };
+
+      img.onerror = () => {
+        console.warn(`Failed to load image: ${img.src}`);
+        markFrameComplete(index, null);
+        onDone?.();
+      };
+    };
+
+    const pumpQueue = () => {
+      if (cancelled) return;
+
+      while (activeRequests < maxConcurrent && nextFrameToQueue < frameCount) {
+        const frameToLoad = nextFrameToQueue;
+        nextFrameToQueue++;
+        activeRequests++;
+
+        loadFrame(frameToLoad, () => {
+          activeRequests--;
+          pumpQueue();
+        });
+      }
+    };
+
+    loadFrame(0, pumpQueue);
 
     return () => {
-      images.forEach((img) => {
+      cancelled = true;
+      createdImages.forEach((img) => {
         img.src = "";
       });
     };
@@ -76,9 +192,8 @@ export default function ProductCanvasScroll({
       canvas.width = rect.width;
       canvas.height = rect.height;
 
-      // Redraw current frame
-      if (imagesLoaded && imagesRef.current[frameIndexRef.current]) {
-        drawFrame(frameIndexRef.current);
+      if (firstFrameLoaded) {
+        drawNearestLoadedFrame(frameIndexRef.current);
       }
     };
 
@@ -88,45 +203,11 @@ export default function ProductCanvasScroll({
     return () => {
       window.removeEventListener("resize", resizeCanvas);
     };
-  }, [imagesLoaded]);
-
-  // Draw frame on canvas
-  const drawFrame = (index: number) => {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx || !imagesRef.current[index]) return;
-
-    const img = imagesRef.current[index];
-
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Calculate dimensions to maintain aspect ratio (contain fit)
-    const canvasAspect = canvas.width / canvas.height;
-    const imgAspect = img.width / img.height;
-
-    let drawWidth, drawHeight, offsetX, offsetY;
-
-    if (canvasAspect > imgAspect) {
-      // Canvas is wider than image
-      drawHeight = canvas.height;
-      drawWidth = img.width * (canvas.height / img.height);
-      offsetX = (canvas.width - drawWidth) / 2;
-      offsetY = 0;
-    } else {
-      // Canvas is taller than image
-      drawWidth = canvas.width;
-      drawHeight = img.height * (canvas.width / img.width);
-      offsetX = 0;
-      offsetY = (canvas.height - drawHeight) / 2;
-    }
-
-    ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
-  };
+  }, [firstFrameLoaded, frameCount]);
 
   // Handle scroll animation
   useEffect(() => {
-    if (!imagesLoaded || !containerRef.current) return;
+    if (!firstFrameLoaded || !containerRef.current) return;
 
     let rafId: number;
 
@@ -140,12 +221,13 @@ export default function ProductCanvasScroll({
       );
 
       const frameIndex = Math.floor(scrollProgress * (frameCount - 1));
+      desiredFrameRef.current = frameIndex;
 
       if (frameIndex !== frameIndexRef.current) {
         frameIndexRef.current = frameIndex;
 
         rafId = requestAnimationFrame(() => {
-          drawFrame(frameIndex);
+          drawNearestLoadedFrame(frameIndex);
         });
       }
     };
@@ -157,7 +239,7 @@ export default function ProductCanvasScroll({
       window.removeEventListener("scroll", handleScroll);
       if (rafId) cancelAnimationFrame(rafId);
     };
-  }, [imagesLoaded, frameCount]);
+  }, [firstFrameLoaded, frameCount]);
 
   return (
     <div ref={containerRef} className="relative h-[500vh]">
@@ -170,7 +252,7 @@ export default function ProductCanvasScroll({
         {/* Subtle vignette - more focus on the animation */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/50 pointer-events-none" />
 
-        {!imagesLoaded && (
+        {!firstFrameLoaded && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm">
             <div className="text-white text-xl sm:text-2xl md:text-4xl font-bold mb-4 px-4 text-center">
               Loading Experience...
@@ -187,8 +269,14 @@ export default function ProductCanvasScroll({
           </div>
         )}
 
+        {firstFrameLoaded && !allFramesLoaded && (
+          <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm border border-white/15 text-white/80 text-xs sm:text-sm pointer-events-none">
+            Optimizing frames {loadingProgress}%
+          </div>
+        )}
+
         {/* Scroll Indicator - appears after images load */}
-        {imagesLoaded && (
+        {firstFrameLoaded && (
           <div className="absolute bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none animate-bounce">
             <div className="text-white/80 text-xs sm:text-sm uppercase tracking-wider mb-2 px-2">
               Scroll to Explore
