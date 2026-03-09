@@ -172,27 +172,29 @@ export default function ProductCanvasScroll({
 
         {!imagesLoaded && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm">
-            <div className="text-white text-2xl md:text-4xl font-bold mb-4">
+            <div className="text-white text-xl sm:text-2xl md:text-4xl font-bold mb-4 px-4 text-center">
               Loading Experience...
             </div>
-            <div className="w-64 h-2 bg-white/20 rounded-full overflow-hidden">
+            <div className="w-48 sm:w-64 h-2 bg-white/20 rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-yellow-400 to-yellow-600 transition-all duration-300"
                 style={{ width: `${loadingProgress}%` }}
               />
             </div>
-            <div className="text-white/70 text-lg mt-2">{loadingProgress}%</div>
+            <div className="text-white/70 text-sm sm:text-lg mt-2">
+              {loadingProgress}%
+            </div>
           </div>
         )}
 
         {/* Scroll Indicator - appears after images load */}
         {imagesLoaded && (
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none animate-bounce">
-            <div className="text-white/80 text-sm uppercase tracking-wider mb-2">
+          <div className="absolute bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none animate-bounce">
+            <div className="text-white/80 text-xs sm:text-sm uppercase tracking-wider mb-2 px-2">
               Scroll to Explore
             </div>
             <svg
-              className="w-6 h-6 text-white/60"
+              className="w-5 h-5 sm:w-6 sm:h-6 text-white/60"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
