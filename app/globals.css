@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --dark-gradient: linear-gradient(135deg, #3e2723, #1b1b1b);
+  --lemon-gradient: linear-gradient(135deg, #fff176, #fdd835);
+  --strawberry-gradient: linear-gradient(135deg, #ef5350, #c62828);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-outfit), sans-serif;
+  background: var(--dark-gradient);
+  transition: background 0.8s ease;
+  overflow-x: hidden;
+}
+
+/* Hide scrollbars for clean app-like feel */
+::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+/* Custom selection style */
+::selection {
+  background-color: #fdd835;
+  color: #000000;
+}
+
+::-moz-selection {
+  background-color: #fdd835;
+  color: #000000;
+}
+
+/* Smooth transitions */
+@layer utilities {
+  .text-gradient {
+    background: linear-gradient(90deg, #fdd835, #d2691e);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .glass-effect {
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .glow-hover {
+    transition: all 0.3s ease;
+  }
+
+  .glow-hover:hover {
+    box-shadow: 0 0 20px rgba(253, 216, 53, 0.5);
+    transform: translateY(-2px);
+  }
+
+  /* Cinematic storytelling effects */
+  .cinematic-text {
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  }
+
+  .fade-in {
+    animation: fadeIn 1s ease-in;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Smooth scroll snap for storytelling sections */
+  .scroll-smooth {
+    scroll-behavior: smooth;
+  }
+}
